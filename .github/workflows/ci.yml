@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build formalizations (lake build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Official Lean CI action (leanprover/lean-action). With defaults it:
+      #   1. installs elan and the toolchain pinned in `lean-toolchain`
+      #      (leanprover/lean4:v4.34.0-rc2),
+      #   2. detects the Mathlib dependency and runs `lake exe cache get`,
+      #   3. runs `lake build` on the default targets declared in `lakefile.toml`
+      #      (NavierStokes, Euler, ComparatorChallenges). The Euler library is
+      #      compiled with `autoImplicit = false` and `warningAsError = true`.
+      #   4. caches the `.lake` directory with actions/cache so incremental PR
+      #      builds only recompile changed modules.
+      # ComparatorChallenges intentionally contains `sorry` placeholders
+      # (challenge statements); they compile fine and are not part of the
+      # NavierStokes/Euler proof libraries.
+      - uses: leanprover/lean-action@v1

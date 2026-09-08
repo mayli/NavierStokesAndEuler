@@ -1,0 +1,49 @@
+# Deep independent verification of the formalizations.
+#
+# Unlike ci.yml (a fast PR gate that only recompiles the Lean sources), this
+# workflow additionally re-checks every kernel declaration of the NavierStokes
+# and Euler proof libraries with `leanchecker`, an independent Lean type
+# checker that ships with the toolchain. It is deliberately NOT a PR gate:
+# re-verifying ~2400 modules (each importing Mathlib) is expensive, so it runs
+# nightly against `main` and can also be triggered manually via
+# "Run workflow" → Actions → Verify.
+#
+# Comparator / nanoda (the strongest independent check, see
+# ComparatorChallenges/README.md) needs the landrun sandbox and trusted-host
+# setup, so it stays a manual process outside CI.
+
+name: Verify
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # daily at 03:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  leanchecker:
+    name: Independent kernel check (leanchecker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Single lean-action invocation: restores/builds the workspace (same
+      # actions/cache keys as ci.yml, so oleans are reused when available),
+      # then runs `lake env leanchecker NavierStokes Euler`, restricting the
+      # re-check to the two proof libraries' module prefixes. ComparatorChallenges
+      # is excluded because its challenge statements contain intentional sorries.
+      - name: Build + leanchecker on NavierStokes and Euler
+        uses: leanprover/lean-action@v1
+        env:
+          # Checking Mathlib-dependent modules in parallel exhausts a hosted
+          # runner's memory; see lean-action docs on `leanchecker`.
+          LEAN_NUM_THREADS: "1"
+        with:
+          leanchecker: true
+          leanchecker-args: "NavierStokes Euler"

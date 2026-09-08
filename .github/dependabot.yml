@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Keep leanprover/lean-action@v1 current: Lean/Lake changes can break
+  # outdated versions of the action, and v4.34.0-rc2 is a release candidate
+  # line under active development.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
